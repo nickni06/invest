@@ -1,2 +1,2 @@
 # invest
-quant investment!
+quant investment!!
