@@ -31,8 +31,8 @@ def update_stock_basics():
 '''
 # 根据需要增删 日线行情 数据  单次提取*4000*条
 def update_daily(start_date, end_date):
-    # mf.delete_daily(engine, '19900101', '19991231')
-    # sys.stdout.write('--- daily price deleted successfully!\n')
+    mf.delete_daily(engine, start_date, end_date)
+    sys.stdout.write('--- daily price deleted successfully!\n')
     codes = mf.get_ts_code(engine)
     mf.update_all_daily(engine, pro, codes, start_date, end_date, 3, 2)
     sys.stdout.write('--- daily price updated successfully!\n')
@@ -44,56 +44,45 @@ def update_daily(start_date, end_date):
 # 根据需要增删 日线行情 数据  单次提取*4000*条
 def update_income(start_date, end_date):
     codes = mf.get_ts_code(engine)
-    # test
-    # codes = {'ts_code': ['002594.SZ']}
     mf.update_all_income(engine, pro, codes, start_date, end_date, 3, 2)
     sys.stdout.write('--- income table updated successfully!\n')
 
 def update_balancesheet(start_date, end_date):
     codes = mf.get_ts_code(engine)
-    # test
-    # codes = {'ts_code': ['002594.SZ']}
     mf.update_all_balancesheet(engine, pro, codes, start_date, end_date, 3, 2)
     sys.stdout.write('--- balancesheet table updated successfully!\n')
 
 def update_cashflow(start_date, end_date):
     codes = mf.get_ts_code(engine)
-    # test
-    # codes = {'ts_code': ['002594.SZ']}
     mf.update_all_cashflow(engine, pro, codes, start_date, end_date, 3, 2)
     sys.stdout.write('--- cashflow table updated successfully!\n')
 
 def update_forecast(start_date, end_date):
     codes = mf.get_ts_code(engine)
-    # test
-    # codes = {'ts_code': ['002594.SZ']}
     mf.update_all_forecast(engine, pro, codes, start_date, end_date, 3, 2)
     sys.stdout.write('--- forecast table updated successfully!\n')
 
 def update_express(start_date, end_date):
     codes = mf.get_ts_code(engine)
-    # test
-    # codes = {'ts_code': ['002594.SZ']}
     mf.update_all_express(engine, pro, codes, start_date, end_date, 3, 2)
     sys.stdout.write('--- express table updated successfully!\n')
 
 def update_fina_indicator(start_date, end_date):
     codes = mf.get_ts_code(engine)
-    # test
-    # codes = {'ts_code': ['002594.SZ']}
     mf.update_all_fina_indicator(engine, pro, codes, start_date, end_date, 3, 2)
     sys.stdout.write('--- fina_indicator table updated successfully!\n')
 
 if __name__ == '__main__':
     start_date = 19900101
-    end_date = 20210629
-    # update_stock_basics()
+    end_date = 20210720
+    
+    # update_stock_basics()  # 更新股票代码信息
 
-    # update_daily(start_date, end_date)
+    # update_daily(start_date, end_date)  # 更新日线走势
 
     # update_income(start_date, end_date)
 
-    # update_balancesheet(start_date, end_date)
+    update_balancesheet(start_date, end_date)
 
     # update_cashflow(start_date, end_date)
 

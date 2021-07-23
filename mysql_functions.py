@@ -45,13 +45,13 @@ def update_stock_basic(engine, pro, retry_count, pause):
 def delete_daily(engine, start_date, end_date):
     """删除 日线行情 数据"""
     conn = engine.connect()
-    conn.execute('delete from daily where  trade_date between ' + start_date + ' and ' + end_date)
+    conn.execute('delete from daily where  trade_date between ' + str(start_date) + ' and ' + str(end_date))
 
 
 def update_all_daily(engine, pro, codes, start_date, end_date, retry_count, pause):
     """股票代码方式更新 日线行情"""
     for value in codes['ts_code']:
-        df = gtd.get_daily_code(pro, value, start_date, end_date, retry_count, pause)
+        df = gtd.get_daily(pro, value, start_date, end_date, retry_count, pause)
         df.to_sql('daily', engine, if_exists='append', index=False)
         sys.stdout.write('------ ' + str(value) + ' updated to table successfully!\n')
         time.sleep(0.6)
@@ -73,25 +73,26 @@ def update_daily_date(engine, pro, date, retry_count, pause):
 
 
 def update_all_income(engine, pro, codes, start_date, end_date, retry_count, pause):
+
     """股票代码方式更新 日线行情"""
     for value in codes['ts_code']:
         df = gtd.get_income(pro, value, start_date, end_date, retry_count, pause)
         df = df.drop_duplicates(subset=['ts_code', 'end_date', 'report_type'])
         df.to_sql('income', engine, if_exists='append', index=False)
         sys.stdout.write('------ ' + str(value) + ' updated to table income successfully!\n')
-        time.sleep(1.3) # 接口每分钟规定最多50次访问
+        time.sleep(1.0) # 接口每分钟规定最多50次访问
 
 
 def update_all_balancesheet(engine, pro, codes, start_date, end_date, retry_count, pause):
     """股票代码方式更新 日线行情"""
-    for value in codes['ts_code'][4106: ]:
+    for value in codes['ts_code']:
         df = gtd.get_balancesheet(pro, value, start_date, end_date, retry_count, pause)
         try:
             df = df.drop_duplicates(subset=['ts_code', 'end_date', 'report_type'])
             df.to_sql('balancesheet', engine, if_exists='append', index=False)
             sys.stdout.write('------ ' + str(value) + ' updated to table balancesheet successfully!\n')
         except Exception as e:
-            sys.stdout.write(e + '\n')
+            sys.stdout.write(str(e) + '\n')
         time.sleep(1.0)
 
 
