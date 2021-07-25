@@ -10,7 +10,23 @@ pymysql.install_as_MySQLdb()
 from sqlalchemy import create_engine
 from stock_basics_tables_structure import Base
 import mysql_functions as mf
+import tree_tools as tt
 import matplotlib.pyplot as plt
+
+from sklearn import datasets
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import tree
+from sklearn import metrics
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import ShuffleSplit
+
+import pydotplus
+
+from sklearn.impute import SimpleImputer
+import os
+
 # 创建数据库引擎
 engine = create_engine('mysql://root:111111@127.0.0.1/invest')
 conn = engine.connect()
@@ -22,10 +38,15 @@ Base.metadata.create_all(engine)
 ts.set_token('14cdd17e72410feeb5f4f588c34774e85c6ab132c86a35ca4252f50b')
 pro = ts.pro_api()
 
+Saving_PATH = r'C:\Users\haora\Desktop\invest\byd_tree_clf_fina_indicator_'
+Lib_PATH = r'C:\Users\haora\PycharmProjects\pythonProject\venv\Lib'
+
+
 def get_reports_dates(code):
     query = "select f_ann_date from invest.income where ts_code = '" + str(code) + "' order by f_ann_date;"
     df = pd.read_sql(sql=query, con=engine)
     return list(df['f_ann_date'])
+
 
 '''
 单只股票的财报时期股票走势
@@ -90,12 +111,14 @@ def get_neighbors_moving(code, reports_dates_list):
             'report_date_price_change_ratio_list': report_date_price_change_ratio_list,
             'after_price_change_ratio_list': after_price_change_ratio_list}
 
+
 '''
 提取单只股票的历史财报重要财务指标
 '''
 def get_report_fina_indicator(code, reports_dates_list):
     query = "select * from invest.fina_indicator where ts_code = '" + str(code) + "';"
     fina_indicator_df = pd.read_sql(sql=query, con=engine)
+    # fina_indicator_df.to_csv(r'C:\Users\haora\Desktop\byd_fina_indicator.csv')
     fina_indicator_dates_list = list(fina_indicator_df['ann_date'])
     fina_indicators_list_list = []
     fina_indicators_series_list = []
@@ -110,6 +133,7 @@ def get_report_fina_indicator(code, reports_dates_list):
             sys.stderr.write('ERROR: cannot find acquired date' + str(date))
     return fina_indicators_series_list, fina_indicators_list_list
 
+
 def scatterplot(list_1, list_2):
     fig, ax = plt.subplots()
 
@@ -119,22 +143,31 @@ def scatterplot(list_1, list_2):
     plt.axis([-50, 50, -20, 20])
     plt.show()
 
+
 def get_element(series_list, element):
     element_list = []
     for tuple_ in series_list:
         element_list.append(tuple_[element])
     return element_list
 
-def show_revelant(element_name, fina_indicators_series_list, price_change_list_dict, axis_lim=[-50, 50, -20, 20]):
+
+def get_important_revelant(element_name, fina_indicators_series_list, price_change_list_dict, axis_lim=[-50, 50, -20, 20]):
     element_value_list = get_element(fina_indicators_series_list, element_name)
     l_e = pd.Series(element_value_list)
     l_b = pd.Series(price_change_list_dict['before_price_change_ratio_list'])
     l_rd = pd.Series(price_change_list_dict['report_date_price_change_ratio_list'])
     l_a = pd.Series(price_change_list_dict['after_price_change_ratio_list'])
+
     R_before = l_e.corr(l_b)
     R_report_date = l_e.corr(l_rd)
     R_after = l_e.corr(l_a)
+    if abs(R_before) > 0.08 or abs(R_before) > 0.08 or abs(R_before) > 0.08:
+        sys.stdout.write('important element: %s\n' % str(element_name))
+    else:
+        return
     sys.stdout.write('before: ' + str(R_before) + '\nreport_date: ' + str(R_report_date) + '\nafter: ' + str(R_after) + '\n')
+    axis_lim = [l_e.min(), l_e.max(), -20, 20]
+    print(axis_lim)
     plt.suptitle(element_name)
     plt.subplot(221)
     plt.title('before_price_change')
@@ -159,9 +192,43 @@ def show_revelant(element_name, fina_indicators_series_list, price_change_list_d
     plt.grid(True)
     plt.show()
 
+
 def get_table_element_names(table_name):
     table_element_names_query = 'show columns FROM invest.' + str(table_name) + ';'
     return list(pd.read_sql(sql=table_element_names_query, con=engine)['Field'])
+
+
+# 获得股票走势分类：decrease/increase
+def get_change_category(price_change_list_dict):
+    price_category_list_dict = {}
+    before_cat_list, reportDate_cat_list, after_cat_list = [], [], []
+    for price in price_change_list_dict['before_price_change_ratio_list']:
+        price = float(price)
+        if price > 0:
+            before_cat_list.append('increase')
+        else:
+            before_cat_list.append('decrease')
+    for price in price_change_list_dict['report_date_price_change_ratio_list']:
+        price = float(price)
+        if price > 0:
+            reportDate_cat_list.append('increase')
+        else:
+            reportDate_cat_list.append('decrease')
+    for price in price_change_list_dict['after_price_change_ratio_list']:
+        price = float(price)
+        if price > 0:
+            after_cat_list.append('increase')
+        else:
+            after_cat_list.append('decrease')
+    return {'before_category_list': before_cat_list, \
+            'reportDate_category_list': reportDate_cat_list,
+            'after_category_list': after_cat_list}
+
+def tree_clf(X, Y_dict, price_period):
+    Y = Y_dict[price_period]
+    # tt.decison_tree_clf(X, Y, price_period)
+    tt.cv_grid_search(X, Y, price_period)
+
 
 def test(code='002594.SZ'):
     query = "select * from invest.daily where ts_code = '" + str(code) + "';"
@@ -174,12 +241,22 @@ def main(code):
     price_change_list_dict = get_neighbors_moving(code, reports_dates_list)
     fina_indicators_series_list, fina_indicators_list_list = get_report_fina_indicator(code, reports_dates_list)
     table_name = 'fina_indicator'
-    print(get_table_element_names(table_name))
+    element_list = get_table_element_names(table_name)
+    # for element in element_list[3: -1]:
+    #     get_important_revelant(element, fina_indicators_series_list, price_change_list_dict)
+    fina_indicator_df = pd.DataFrame(data=fina_indicators_series_list)
+    price_category_list_dict = get_change_category(price_change_list_dict)
+    # print(price_category_list_dict['before_category_list'])
+    # print(fina_indicator_df['valuechange_income'])
+    # print(len(price_category_list_dict['before_category_list']), len(fina_indicator_df['valuechange_income']))
 
-    #element_name = 'bps_yoy'
-    #show_revelant(element_name, fina_indicators_series_list, price_change_list_dict)
+    tree_clf(fina_indicator_df.iloc[:, 3:-1], price_category_list_dict, 'before_category_list')  # 3:-1 数字列
+    tree_clf(fina_indicator_df.iloc[:, 3:-1], price_category_list_dict, 'reportDate_category_list')
+    tree_clf(fina_indicator_df.iloc[:, 3:-1], price_category_list_dict, 'after_category_list')
+
 
 if __name__ == '__main__':
     code = '002594.SZ' # 比亚迪
     main(code)
+
 
