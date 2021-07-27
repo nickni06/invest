@@ -144,5 +144,5 @@ def update_all_fina_indicator(engine, pro, codes, start_date, end_date, retry_co
             df.to_sql('fina_indicator', engine, if_exists='append', index=False)
             sys.stdout.write('------ ' + str(value) + ' updated to table fina_indicator successfully!\n')
         except Exception as e:
-            sys.stdout.write(e + '\n')
+            sys.stdout.write(str(e) + '\n')
         time.sleep(1.0)

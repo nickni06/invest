@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     # update_income(start_date, end_date)
 
-    update_balancesheet(start_date, end_date)
+    # update_balancesheet(start_date, end_date)
 
     # update_cashflow(start_date, end_date)
 
@@ -90,4 +90,4 @@ if __name__ == '__main__':
 
     # update_express(start_date, end_date)
 
-    # update_fina_indicator(start_date, end_date)
+    update_fina_indicator(start_date, end_date)
