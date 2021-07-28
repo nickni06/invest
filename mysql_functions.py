@@ -64,6 +64,22 @@ def update_daily_date(engine, pro, date, retry_count, pause):
 
 
 '''
+获取前复权日线
+'''
+def delete_daily_qfq(engine, start_date, end_date):
+    """删除 日线行情 数据"""
+    conn = engine.connect()
+    conn.execute('delete from daily_qfq where trade_date between ' + str(start_date) + ' and ' + str(end_date))
+
+
+def update_all_daily_qfq(engine, pro, codes, start_date, end_date, retry_count, pause):
+    """股票代码方式更新 日线行情"""
+    for value in codes['ts_code']:
+        df = gtd.get_daily_qfq(pro, value, start_date, end_date, retry_count, pause)
+        df.to_sql('daily_qfq', engine, if_exists='append', index=False)
+        sys.stdout.write('------ ' + str(value) + ' updated to table successfully!\n')
+        time.sleep(0.6)
+'''
 ------------ financial info ------------
 '''
 

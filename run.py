@@ -36,8 +36,14 @@ def update_daily(start_date, end_date):
     codes = mf.get_ts_code(engine)
     mf.update_all_daily(engine, pro, codes, start_date, end_date, 3, 2)
     sys.stdout.write('--- daily price updated successfully!\n')
-    # mf.update_daily_date(engine, pro, '20190702', 3, 2)
 
+# 根据需要增删 日线行情 数据  单次提取*4000*条
+def update_daily(start_date, end_date):
+    mf.delete_daily_qfq(engine, start_date, end_date)
+    sys.stdout.write('--- daily_qfq price deleted successfully!\n')
+    codes = mf.get_ts_code(engine)
+    mf.update_all_daily_qfq(engine, pro, codes, start_date, end_date, 3, 2)
+    sys.stdout.write('--- daily_qfq price updated successfully!\n')
 '''
 ----- financial info -----
 '''

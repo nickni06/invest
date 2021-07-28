@@ -56,6 +56,30 @@ class Daily(Base):
     amount = Column(Float)      # 成交额 （千元）
 
 '''
+-------- daily_qfq info --------
+'''
+class Daily_qfq(Base):
+    """日线行情
+    ts_code     str     N       股票代码（二选一）
+    trade_date  str     N       交易日期（二选一）
+    start_date  str     N       开始日期(YYYYMMDD)
+    end_date    str     N       结束日期(YYYYMMDD)
+    """
+    __tablename__ = 'daily'
+
+    ts_code = Column(String(10), primary_key=True)      # 股票代码
+    trade_date = Column(String(8), primary_key=True)    # 交易日期
+    open = Column(Float)        # 开盘价
+    high = Column(Float)        # 最高价
+    low = Column(Float)         # 最低价
+    close = Column(Float)       # 收盘价
+    pre_close = Column(Float)   # 昨收价
+    change = Column(Float)      # 涨跌额
+    pct_chg = Column(Float)     # 涨跌幅 （未复权，如果是复权请用 通用行情接口 ）
+    vol = Column(Float)         # 成交量 （手）
+    amount = Column(Float)      # 成交额 （千元）
+
+'''
 -------- financial info --------
 '''
 class income(Base):

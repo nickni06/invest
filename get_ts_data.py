@@ -2,7 +2,7 @@
 import sys
 import time
 import pandas as pd
-
+import tushare as ts
 '''
 ------------ stock basics ------------
 '''
@@ -58,6 +58,23 @@ def get_daily_date(pro, date, retry_count=3, pause=2):
             sys.stdout.write('WARNING: ' + str(date) + ' updated failed! Retry count: ' + str(_) + '\n')
         else:
             return df
+
+
+'''
+抽取日期区间内某只股票日线数据(前复权)
+'''
+def get_daily_qfq(pro, ts_code, start_date, end_date, retry_count=3, pause=2):
+    """股票代码方式获取 日线行情 数据"""
+    for count in range(retry_count):
+        try:
+            df = ts.pro_bar(ts_code=ts_code, start_date=start_date, end_date=end_date, asset='E', adj='qfq')
+        except Exception as e:
+            time.sleep(pause)
+            sys.stdout.write(str(e) + '\n')
+            sys.stdout.write('WARNING: ' + str(ts_code) + ' updated failed! Retry count: ' + str(count) + '\n')
+        else:
+            return df
+
 
 '''
 ------------ financial info ------------
