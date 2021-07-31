@@ -4,6 +4,7 @@ import numpy as np
 import tushare as ts 
 import matplotlib.pyplot as plt
 import myStrategy as ms
+import myStrategy_multi_indicators as msmi
 import backtrader as bt
 import get_ts_data as gtd
 from datetime import datetime
@@ -22,7 +23,7 @@ def search_param(code, start_date, end_date='', startcash=10000, qts=500, com=0.
     #创建主控制器
     cerebro = bt.Cerebro()      
     #导入策略参数寻优
-    cerebro.optstrategy(ms.MyStrategy,maperiod=range(3, 51))    
+    cerebro.optstrategy(msmi.MyStrategy,maperiod=range(3, 51))    
     #获取数据
     df = gtd.get_daily_qfq(pro, code, start_date, end_date, retry_count=3, pause=2)
     df.index=pd.to_datetime(df.trade_date)
@@ -54,17 +55,20 @@ def run_fixed(code, start_date, end_date='', startcash=10000, qts=500, com=0.001
     data = bt.feeds.PandasData(dataname=df,
                                 fromdate=datetime(2010, 1, 1),
                                 todate=datetime(2020, 3, 30) )
+    data=bt.feeds.PandasData(dataname=df,
+                                fromdate=datetime.strptime(start_date, "%Y%m%d"),
+                                todate=datetime.strptime(end_date, "%Y%m%d"))
     # 加载数据
     cerebro.adddata(data)
     # 将交易策略加载到回测系统中
     #设置printlog=True，表示打印交易日志log
-    cerebro.addstrategy(ms.MyStrategy,maperiod=14,printlog=True)
+    cerebro.addstrategy(msmi.MyStrategy, printlog=True)
     # 设置初始资本为10,000
-    cerebro.broker.setcash(10000.0)
+    cerebro.broker.setcash(startcash)
     # 设置交易手续费为 0.1%
-    cerebro.broker.setcommission(commission=0.001)
+    cerebro.broker.setcommission(commission=com)
     #设置买入设置，策略，数量
-    cerebro.addsizer(bt.sizers.FixedSize, stake=1000)
+    cerebro.addsizer(bt.sizers.FixedSize, stake=qts)
 
     #回测结果
     cerebro.run()
@@ -92,7 +96,7 @@ if __name__ == '__main__':
     end_date = sys.argv[3]
     start_asset = int(sys.argv[4])
     shares_per_action = int(sys.argv[5])
-    main(code, start_date, end_date, start_asset, shares_per_action)
+    run_fixed(code, start_date, end_date, start_asset, shares_per_action)
 
 
 
