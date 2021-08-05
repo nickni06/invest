@@ -19,7 +19,7 @@ ts.set_token('14cdd17e72410feeb5f4f588c34774e85c6ab132c86a35ca4252f50b')
 pro = ts.pro_api()
 
 
-def search_param(code, start_date, end_date='', startcash=10000, qts=500, com=0.001):
+def search_param_BF(code, start_date, end_date='', startcash=10000, qts=500, com=0.001):
     #创建主控制器
     cerebro = bt.Cerebro()      
     #导入策略参数寻优
@@ -41,6 +41,44 @@ def search_param(code, start_date, end_date='', startcash=10000, qts=500, com=0.
     cerebro.broker.getvalue())    
     cerebro.run(maxcpus=1)    
     print('期末总资金: %.2f' % cerebro.broker.getvalue())
+
+'''
+Parameters optiization using PSO (Particle Swarm Optimization)
+'''
+def search_param_PSO(code, start_date, end_date='', startcash=10000, qts=500, com=0.001):
+    import optunity
+    import optunity.metrics
+
+    def run(sma1, sma2)
+        #创建主控制器
+        cerebro = bt.Cerebro()
+        #添加策略
+        cerebro.addstrategy(, sma1=sma1, sma2=sma2)
+        #获取数据
+        df = gtd.get_daily_qfq(pro, code, start_date, end_date, retry_count=3, pause=2)
+        df.index=pd.to_datetime(df.trade_date)
+        df = df.sort_index()
+        df=df[['open','high','low','close','vol']]
+        #将数据加载至回测系统
+        data = bt.feeds.PandasData(dataname=df)
+        cerebro.adddata(data)
+        #broker设置资金、手续费
+        cerebro.broker.setcash(startcash)
+        cerebro.broker.setcommission(commission=com)
+        #设置买入设置，策略，数量
+        cerebro.addsizer(bt.sizers.FixedSize, stake=qts)
+        print('期初总资金: %.2f' % cerebro.broker.getvalue())
+        cerebro.run(maxcpus=1)
+        print('期末总资金: %.2f' % cerebro.broker.getvalue())
+        return cerebro.broker.getvalue()
+
+    
+    opt = optunity.maximize(runstrat,  num_evals=100, sma1=[2, 55], sma2=[2, 55])
+
+    optimal_pars, details, _ = opt
+    print('Optimal Parameters:')
+    print('sma1 = %.2f' % optimal_pars['sma1'])
+    print('sma2 = %.2f' % optimal_pars['sma2'])
 
 
 #使用最优参数
