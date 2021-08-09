@@ -121,8 +121,8 @@ class MyStrategy_MI_1(bt.Strategy):
         self.buycomm = None
 
         #添加指标
-        sma1 = bt.ind.SMA(self.data0, period=self.p.pfast)
-        sma2 = bt.ind.SMA(self.data0, period=self.p.pslow)
+        sma1 = bt.ind.SMA(self.data0, period=int(self.p.pfast))
+        sma2 = bt.ind.SMA(self.data0, period=int(self.p.pslow))
         self.crossover = bt.ind.CrossOver(sma1, sma2)
 
         rsi = bt.indicators.RSI(period=self.p.rsi_per,
@@ -175,7 +175,9 @@ class MyStrategy_MI_1(bt.Strategy):
             else:
                 self.log(f'卖出:\n价格：{order.executed.price},\
                 成本: {order.executed.value},\
-                手续费{order.executed.comm}')
+                手续费: {order.executed.comm},\
+                当前总资金: {self.broker.getvalue()}'
+                )
             self.bar_executed = len(self) 
 
         # 如果指令取消/交易失败, 报告结果
