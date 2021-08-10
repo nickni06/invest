@@ -90,6 +90,55 @@ def search_param_PSO(code, start_date, end_date='', startcash=10000, qts=500, co
     
     return optimal_pars
 
+'''
+test poss
+'''
+def search_param_PSO_test(code, start_date, end_date, startcash, qts, com, **kwarg):
+    import optunity
+    import optunity.metrics
+
+    def run(**kwarg):
+        #创建主控制器
+        cerebro = bt.Cerebro()
+        #添加策略
+        cerebro.addstrategy(ms.MyStrategy_MI_1, kwarg)
+        #获取数据
+        df = gtd.get_daily_qfq(pro, code, start_date, end_date, retry_count=3, pause=2)
+        df.index=pd.to_datetime(df.trade_date)
+        df = df.sort_index()
+        df=df[['open','high','low','close','vol']]
+        #将数据加载至回测系统
+        data = bt.feeds.PandasData(dataname=df)
+        cerebro.adddata(data)
+        #broker设置资金、手续费
+        cerebro.broker.setcash(startcash)
+        cerebro.broker.setcommission(commission=com)
+        #设置买入设置，策略，数量
+        cerebro.addsizer(bt.sizers.FixedSize, stake=qts)
+        print('期初总资金: %.2f' % cerebro.broker.getvalue())
+        cerebro.run()
+        # cerebro.run(maxcpus=1)
+        print('期末总资金: %.2f' % cerebro.broker.getvalue())
+
+        print('Current Parameters:')
+        print('rsi_lower = %.2f' % rsi_lower)
+        print('rsi_upper = %.2f' % rsi_upper)
+        print('pfast = %.2f' % pfast)
+        print('pslow = %.2f' % pslow)
+        print()
+        return cerebro.broker.getvalue()
+    
+    num_evals = 100
+    opt = optunity.maximize(run, kwarg, num_evals=num_evals)
+
+    optimal_pars, details, _ = opt
+    print('Optimal Parameters:')
+    print('rsi_lower = %.2f' % optimal_pars['rsi_lower'])
+    print('rsi_upper = %.2f' % optimal_pars['rsi_upper'])
+    print('pfast = %.2f' % optimal_pars['pfast'])
+    print('pslow = %.2f' % optimal_pars['pslow'])
+
+
 #使用最优参数
 def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=500, com=0.001):
     # 初始化cerebro回测系统设置
@@ -132,7 +181,7 @@ def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=5
 def plot_stock(code,title,start,end):
     dd=ts.get_k_data(code,autype='qfq',start=start,end=end)
     dd.index=pd.to_datetime(dd.date)
-    dd.close.plot(figsize=(14,6),color='r')
+    dd.close.plot(igsize=(14,6),color='r')
     plt.title(title+'价格走势\n'+start+':'+end,size=15)
     plt.annotate(f'期间累计涨幅:{(dd.close[-1]/dd.close[0]-1)*100:.2f}%', xy=(dd.index[-150],dd.close.mean()),
              xytext=(dd.index[-500],dd.close.min()), bbox = dict(boxstyle = 'round,pad=0.5',
@@ -151,16 +200,19 @@ def ask_param():
 
 
 if __name__ == '__main__':
-    code = '601166.SH'
+    code = '002594.SZ'
     start_date = str(20000101)
-    end_date = str(20100101)
+    end_date = str(20150101)
+    eval_start_date = str(20150101)
+    eval_end_date = str(20210731)
     start_asset = 1000000
-    shares_per_action = 80000
+    shares_per_action = 30000
+    com=0.001
     # code, start_date, end_date, start_asset, shares_per_action = ask_param()
-    best_params = search_param_PSO(code, start_date, end_date, startcash=start_asset, qts=shares_per_action, com=0.001)
-    # best_params = {'rsi_upper': 70.83228486021216, 'rsi_lower': 53.767945260382064, 'pfast': 29.30246946586303, 'pslow': 96.92679272943546}
+    best_params = search_param_PSO(code, start_date, end_date, start_asset, shares_per_action, com, rsi_upper=[10,100], rsi_lower=[5,100], pfast=[5, 60], pslow=[10, 200])
+    #best_params = {'rsi_upper': 24.58984375, 'rsi_lower': 37.470703125, 'pfast': 15.205078125, 'pslow': 117.24609375}
     print(best_params)
-    print('start date: %s, end_date: %s' % (str(start_date), str(end_date)))
+    print('start date: %s, end_date: %s' % (str(eval_start_date), str(eval_end_date)))
     print('start_asset: %s, shares_per_action: %s' % (start_asset, shares_per_action))
-    run_fixed(code, best_params, start_date, end_date, startcash=start_asset, qts=shares_per_action)
+    # run_fixed(code, best_params, eval_start_date, eval_end_date, startcash=start_asset, qts=shares_per_action)
     
