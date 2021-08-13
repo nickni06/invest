@@ -79,7 +79,7 @@ def search_param_PSO(code, start_date, end_date='', startcash=10000, qts=500, co
         print()      
         return cerebro.broker.getvalue()
     
-    opt = optunity.maximize(run, num_evals=20000, rsi_upper=[10,100], rsi_lower=[5,100], pfast=[5, 60], pslow=[10, 200])
+    opt = optunity.maximize(run, num_evals=100, rsi_upper=[10,100], rsi_lower=[5,100], pfast=[5, 60], pslow=[10, 200])
     
     optimal_pars, details, _ = opt
     print('Optimal Parameters:')
@@ -93,15 +93,22 @@ def search_param_PSO(code, start_date, end_date='', startcash=10000, qts=500, co
 '''
 test poss
 '''
-def search_param_PSO_test(code, start_date, end_date, startcash, qts, com, **kwarg):
+def search_param_PSO_test(code, start_date, end_date, startcash, qts, com, num_evals, **kwarg):
     import optunity
     import optunity.metrics
 
-    def run(**kwarg):
+    '''
+    CHANGE PARAM CONF HERE
+    '''
+    def run(pfast, pslow):
         #创建主控制器
         cerebro = bt.Cerebro()
         #添加策略
-        cerebro.addstrategy(ms.MyStrategy_MI_1, kwarg)
+        '''
+        CHANGE PARAM CONF HERE
+        '''
+        cerebro.addstrategy(ms.MyStrategy, pfast=pfast, pslow=pslow)
+
         #获取数据
         df = gtd.get_daily_qfq(pro, code, start_date, end_date, retry_count=3, pause=2)
         df.index=pd.to_datetime(df.trade_date)
@@ -115,32 +122,36 @@ def search_param_PSO_test(code, start_date, end_date, startcash, qts, com, **kwa
         cerebro.broker.setcommission(commission=com)
         #设置买入设置，策略，数量
         cerebro.addsizer(bt.sizers.FixedSize, stake=qts)
-        print('期初总资金: %.2f' % cerebro.broker.getvalue())
+        # print('期初总资金: %.2f' % cerebro.broker.getvalue())
         cerebro.run()
-        # cerebro.run(maxcpus=1)
-        print('期末总资金: %.2f' % cerebro.broker.getvalue())
+        # print('期末总资金: %.2f' % cerebro.broker.getvalue())
 
-        print('Current Parameters:')
-        print('rsi_lower = %.2f' % rsi_lower)
-        print('rsi_upper = %.2f' % rsi_upper)
-        print('pfast = %.2f' % pfast)
-        print('pslow = %.2f' % pslow)
+        # print('Current Parameters:')
+        # print('rsi_lower = %.2f' % rsi_lower)
+        # print('rsi_upper = %.2f' % rsi_upper)
+        # print('pfast = %.2f' % pfast)
+        # print('pslow = %.2f' % pslow)
         print()
         return cerebro.broker.getvalue()
     
-    num_evals = 100
-    opt = optunity.maximize(run, kwarg, num_evals=num_evals)
-
-    optimal_pars, details, _ = opt
+    opt = optunity.maximize(run, num_evals=num_evals, **kwarg)
+    optimal_params, details, _ = opt
+    print('-- Optimization Finished --')
+    # print(details)
+    print('time used: %.2fs' % float(details.stats['time']))
+    print('best value: %.2f' % float(details.optimum))
+    print('best rate: %.2f%s' % (float(details.optimum - startcash) / startcash * 100, '%')) 
+    print()
     print('Optimal Parameters:')
-    print('rsi_lower = %.2f' % optimal_pars['rsi_lower'])
-    print('rsi_upper = %.2f' % optimal_pars['rsi_upper'])
-    print('pfast = %.2f' % optimal_pars['pfast'])
-    print('pslow = %.2f' % optimal_pars['pslow'])
+    key_list = list(optimal_params.keys())
+    key_list.sort()
+    for key in key_list:
+        print('%s = %.2f' % (str(key), optimal_params[key]))
+    return optimal_params
 
 
 #使用最优参数
-def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=500, com=0.001):
+def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=500, com=0.001, **kwarg):
     # 初始化cerebro回测系统设置
     cerebro = bt.Cerebro()
     #获取数据
@@ -158,10 +169,12 @@ def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=5
     cerebro.adddata(data)
     # 将交易策略加载到回测系统中
     #设置printlog=True，表示打印交易日志log
-    cerebro.addstrategy(ms.MyStrategy_MI_1, 
-            pfast = best_params['pfast'], pslow=best_params['pslow'], 
-            rsi_lower=best_params['rsi_lower'], rsi_upper=best_params['rsi_upper'], 
-            printlog=True)
+    """CHANGE HERE """
+    cerebro.addstrategy(ms.MyStrategy, **kwarg)
+    #cerebro.addstrategy(ms.MyStrategy_MI_1, pfast = best_params['pfast'], pslow=best_params['pslow'], 
+    #       rsi_lower=best_params['rsi_lower'], rsi_upper=best_params['rsi_upper'], 
+    #        printlog=True)
+    
     # 设置初始资本为10,000
     cerebro.broker.setcash(startcash)
     # 设置交易手续费为 0.1%
@@ -176,6 +189,7 @@ def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=5
     #Print out the final result
     print(best_params)
     print(f'总资金: {portvalue:.2f}')
+    
 
 
 def plot_stock(code,title,start,end):
@@ -204,15 +218,28 @@ if __name__ == '__main__':
     start_date = str(20000101)
     end_date = str(20150101)
     eval_start_date = str(20150101)
-    eval_end_date = str(20210731)
+    eval_end_date = str(20161231)
     start_asset = 1000000
-    shares_per_action = 30000
+    shares_per_action = 3000
     com=0.001
+    num_evals = 1000
     # code, start_date, end_date, start_asset, shares_per_action = ask_param()
-    best_params = search_param_PSO(code, start_date, end_date, start_asset, shares_per_action, com, rsi_upper=[10,100], rsi_lower=[5,100], pfast=[5, 60], pslow=[10, 200])
+    
+    '''
+    CHANGE PARAM CONF HERE
+    '''
+    best_params = search_param_PSO_test(code, start_date, end_date, start_asset, shares_per_action, com, num_evals, pfast=[5, 60], pslow=[10, 200])
+    
     #best_params = {'rsi_upper': 24.58984375, 'rsi_lower': 37.470703125, 'pfast': 15.205078125, 'pslow': 117.24609375}
+    print()
+    print('-- Starting Final Backtest --')
     print(best_params)
     print('start date: %s, end_date: %s' % (str(eval_start_date), str(eval_end_date)))
     print('start_asset: %s, shares_per_action: %s' % (start_asset, shares_per_action))
-    # run_fixed(code, best_params, eval_start_date, eval_end_date, startcash=start_asset, qts=shares_per_action)
-    
+    run_fixed(code, best_params, eval_start_date, eval_end_date, startcash=start_asset, qts=shares_per_action, **best_params)
+
+
+
+
+
+
