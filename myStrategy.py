@@ -93,6 +93,52 @@ class MyStrategy(bt.Strategy):
         self.log('(MA均线： %2d日) 期末总资金 %.2f' %
                  (self.params.maperiod, self.broker.getvalue()), doprint=True)
 
+'''
+Double Mean Average Strategy
+Strategy 1: double SMA crossing: pfsat, pslow
+'''
+class MyStrategy_DMA(MyStrategy):
+    params = dict(
+        pfast=30,  # period for the fast moving average
+        pslow=100,   # period for the slow moving average
+        printlog=False
+    )
+
+    def __init__(self):
+        #指定价格序列
+        self.data0=self.datas[0].close
+
+        # 初始化交易指令、买卖价格和手续费
+        self.order = None
+        self.buyprice = None
+        self.buycomm = None
+
+        #添加指标
+        sma1 = bt.ind.SMA(self.data0, period=int(self.p.pfast))
+        sma2 = bt.ind.SMA(self.data0, period=int(self.p.pslow))
+        self.crossover = bt.ind.CrossOver(sma1, sma2)
+
+        
+    #策略核心，根据条件执行买卖交易指令（必选）
+    def next(self):
+        # 记录收盘价
+        #self.log(f'收盘价, {data0[0]}')
+        if self.order: # 检查是否有指令等待执行, 
+            return
+        # 检查是否持仓   
+        if not self.position: # 没有持仓
+            #执行买入条件判断：收盘价格上涨突破15日均线
+            if self.crossover > 0:
+                self.log('BUY CREATE, %.2f' % self.data0[0])
+                #执行买入
+                self.buy()         
+        else:
+            #执行卖出条件判断：收盘价格跌破15日均线
+            if self.crossover <= 0:
+                self.log('SELL CREATE, %.2f' % self.data0[0])
+                #执行卖出
+                self.order = self.sell()
+        
         
 '''
 Multi_Indicators Strategy 1
