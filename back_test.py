@@ -93,7 +93,7 @@ def search_param_PSO(code, start_date, end_date='', startcash=10000, qts=500, co
 '''
 test poss
 '''
-def search_param_PSO_test(code, start_date, end_date, startcash, qts, com, num_evals, **kwarg):
+def search_param_PSO_test(code, strategy, start_date, end_date, startcash, qts, com, num_evals, **kwarg):
     import optunity
     import optunity.metrics
 
@@ -107,13 +107,17 @@ def search_param_PSO_test(code, start_date, end_date, startcash, qts, com, num_e
         '''
         CHANGE PARAM CONF HERE
         '''
-        cerebro.addstrategy(ms.MyStrategy, pfast=pfast, pslow=pslow)
+        cerebro.addstrategy(strategy, pfast=pfast, pslow=pslow, printlog=False)
 
         #获取数据
         df = gtd.get_daily_qfq(pro, code, start_date, end_date, retry_count=3, pause=2)
         df.index=pd.to_datetime(df.trade_date)
         df = df.sort_index()
         df=df[['open','high','low','close','vol']]
+        start_close_price = df['close'][0]
+        end_close_price = df['close'][-1]
+        print(f'股价期间变化: {(end_close_price/start_close_price-1)*100:.2f}%')
+        
         #将数据加载至回测系统
         data = bt.feeds.PandasData(dataname=df)
         cerebro.adddata(data)
@@ -125,12 +129,13 @@ def search_param_PSO_test(code, start_date, end_date, startcash, qts, com, num_e
         # print('期初总资金: %.2f' % cerebro.broker.getvalue())
         cerebro.run()
         # print('期末总资金: %.2f' % cerebro.broker.getvalue())
-
-        # print('Current Parameters:')
+        
+        
+        print('Current Parameters:')
         # print('rsi_lower = %.2f' % rsi_lower)
         # print('rsi_upper = %.2f' % rsi_upper)
-        # print('pfast = %.2f' % pfast)
-        # print('pslow = %.2f' % pslow)
+        print('pfast = %.2f' % pfast)
+        print('pslow = %.2f' % pslow)
         print()
         return cerebro.broker.getvalue()
     
@@ -151,7 +156,8 @@ def search_param_PSO_test(code, start_date, end_date, startcash, qts, com, num_e
 
 
 #使用最优参数
-def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=500, com=0.001, **kwarg):
+def run_fixed(code, strategy, best_params, start_date, end_date='', startcash=10000, qts=500, com=0.001, **kwarg):
+    print('--start date: %s, end_date: %s--' % (str(start_date), str(end_date)))
     # 初始化cerebro回测系统设置
     cerebro = bt.Cerebro()
     #获取数据
@@ -159,9 +165,6 @@ def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=5
     df.index=pd.to_datetime(df.trade_date)
     df=df[['ts_code', 'open','high','low','close','vol']]
     df = df.sort_index()
-    data = bt.feeds.PandasData(dataname=df,
-                                fromdate=datetime(2010, 1, 1),
-                                todate=datetime(2021, 7, 30) )
     data=bt.feeds.PandasData(dataname=df,
                                 fromdate=datetime.strptime(start_date, "%Y%m%d"),
                                 todate=datetime.strptime(end_date, "%Y%m%d"))
@@ -170,10 +173,7 @@ def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=5
     # 将交易策略加载到回测系统中
     #设置printlog=True，表示打印交易日志log
     """CHANGE HERE """
-    cerebro.addstrategy(ms.MyStrategy, **kwarg)
-    #cerebro.addstrategy(ms.MyStrategy_MI_1, pfast = best_params['pfast'], pslow=best_params['pslow'], 
-    #       rsi_lower=best_params['rsi_lower'], rsi_upper=best_params['rsi_upper'], 
-    #        printlog=True)
+    cerebro.addstrategy(strategy, **kwarg)
     
     # 设置初始资本为10,000
     cerebro.broker.setcash(startcash)
@@ -186,10 +186,22 @@ def run_fixed(code, best_params, start_date, end_date='', startcash=10000, qts=5
     cerebro.run()
     #获取最后总资金
     portvalue = cerebro.broker.getvalue()
+    #获取期间股价
+    start_close_price = df['close'][0]
+    end_close_price = df['close'][-1]
+
     #Print out the final result
     print(best_params)
     print(f'总资金: {portvalue:.2f}')
-    
+    print(f'收益率: {(portvalue/startcash-1)*100:.2f}%')
+    print(f'股价期间变化: {(end_close_price/start_close_price-1)*100:.2f}%')
+    print()
+
+def evaluate(code, strategy, best_params, eval1_start_date, eval2_start_date, eval3_start_date, end_date, startcash, qts, **kwarg):
+    run_fixed(code, strategy, best_params, eval1_start_date, eval2_start_date, startcash, qts, **kwarg)
+    run_fixed(code, strategy, best_params, eval1_start_date, eval3_start_date, startcash, qts, **kwarg)
+    run_fixed(code, strategy, best_params, eval1_start_date, end_date, startcash, qts, **kwarg)
+
 
 
 def plot_stock(code,title,start,end):
@@ -215,31 +227,39 @@ def ask_param():
 
 if __name__ == '__main__':
     code = '002594.SZ'
-    start_date = str(20000101)
-    end_date = str(20150101)
-    eval_start_date = str(20150101)
-    eval_end_date = str(20161231)
+    strategy = ms.MyStrategy_DMA
+    train_start_date = str(20000101)
+    eval1_start_date = str(20180101)
+    eval2_start_date = str(20190101)
+    eval3_start_date = str(20200101)
+    end_date = str(20210101)
+    
     start_asset = 1000000
     shares_per_action = 3000
     com=0.001
-    num_evals = 1000
+    num_evals = 10000
     # code, start_date, end_date, start_asset, shares_per_action = ask_param()
     
     '''
     CHANGE PARAM CONF HERE
     '''
-    best_params = search_param_PSO_test(code, start_date, end_date, start_asset, shares_per_action, com, num_evals, pfast=[5, 60], pslow=[10, 200])
+    best_params = search_param_PSO_test(code, strategy, train_start_date, eval1_start_date, start_asset, shares_per_action, com, num_evals, pfast=[2, 60], pslow=[10, 200])
     
-    #best_params = {'rsi_upper': 24.58984375, 'rsi_lower': 37.470703125, 'pfast': 15.205078125, 'pslow': 117.24609375}
+    '''
+    best_params = {
+            #'rsi_upper': 24.58984375, 
+            #'rsi_lower': 37.470703125, 
+            'pfast': 15.205078125, 
+            'pslow': 117.24609375}
+    '''
     print()
     print('-- Starting Final Backtest --')
     print(best_params)
-    print('start date: %s, end_date: %s' % (str(eval_start_date), str(eval_end_date)))
+    print('start date: %s, end_date: %s' % (str(eval1_start_date), str(end_date)))
     print('start_asset: %s, shares_per_action: %s' % (start_asset, shares_per_action))
-    run_fixed(code, best_params, eval_start_date, eval_end_date, startcash=start_asset, qts=shares_per_action, **best_params)
-
-
-
+    print()
+    evaluate(code, strategy, best_params, eval1_start_date, eval2_start_date, eval3_start_date, end_date, startcash=start_asset, qts=shares_per_action, **best_params)
+    
 
 
 

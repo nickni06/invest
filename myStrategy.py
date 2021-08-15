@@ -31,9 +31,7 @@ class MyStrategy(bt.Strategy):
         #添加移动均线指标
         self.sma = bt.indicators.SimpleMovingAverage(
                       self.datas[0], period=self.params.maperiod)
-
-    #策略核心，根据条件执行买卖交易指令（必选）
-    def next(self):
+        self.startcash = self.broker.get_cash()
         # 记录收盘价
         #self.log(f'收盘价, {dataclose[0]}')
         if self.order: # 检查是否有指令等待执行, 
@@ -68,7 +66,8 @@ class MyStrategy(bt.Strategy):
             if order.isbuy():
                 self.log(f'买入:\n价格:{order.executed.price},\
                 成本:{order.executed.value},\
-                手续费:{order.executed.comm}')
+                手续费:{order.executed.comm}\
+                数量: {order.executed.size}')
                 self.buyprice = order.executed.price
                 self.buycomm = order.executed.comm
             else:
@@ -79,7 +78,7 @@ class MyStrategy(bt.Strategy):
 
         # 如果指令取消/交易失败, 报告结果
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            self.log('交易失败')
+            self.log(f'交易失败, 价格：{self.data0[0]}')
         self.order = None
 
     #记录交易收益情况（可省略，默认不输出结果）
@@ -90,9 +89,11 @@ class MyStrategy(bt.Strategy):
 
     #回测结束后输出结果（可省略，默认输出结果）
     def stop(self):
-        self.log('(MA均线： %2d日) 期末总资金 %.2f' %
-                 (self.params.maperiod, self.broker.getvalue()), doprint=True)
-
+        self.log('期末总资金 %.2f, 收益率 %.2f%s' %
+                 (self.broker.getvalue(), 
+                  self.broker.getvalue() / self.startcash * 100 - 100, 
+                  '%'), 
+                 doprint=True)
 '''
 Double Mean Average Strategy
 Strategy 1: double SMA crossing: pfsat, pslow
@@ -101,13 +102,13 @@ class MyStrategy_DMA(MyStrategy):
     params = dict(
         pfast=30,  # period for the fast moving average
         pslow=100,   # period for the slow moving average
-        printlog=False
+        printlog=True
     )
 
     def __init__(self):
         #指定价格序列
         self.data0=self.datas[0].close
-
+        self.startcash = self.broker.get_cash()
         # 初始化交易指令、买卖价格和手续费
         self.order = None
         self.buyprice = None
@@ -131,13 +132,15 @@ class MyStrategy_DMA(MyStrategy):
             if self.crossover > 0:
                 self.log('BUY CREATE, %.2f' % self.data0[0])
                 #执行买入
-                self.buy()         
+                buy_quantity = int(self.broker.getvalue() / self.data0[0] * 0.89)
+                self.buy(size=buy_quantity)
         else:
             #执行卖出条件判断：收盘价格跌破15日均线
             if self.crossover <= 0:
                 self.log('SELL CREATE, %.2f' % self.data0[0])
                 #执行卖出
-                self.order = self.sell()
+                size=int(self.position.size)
+                self.order = self.sell(size=size)
         
         
 '''
